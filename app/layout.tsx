@@ -5,6 +5,11 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://tmomanga.app";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
+  icons: {
+    icon: "/Logo_tmo.png",
+    shortcut: "/Logo_tmo.png",
+    apple: "/Logo_tmo.png",
+  },
   title: {
     default: "TMO Manga y Anime | Lee One Piece, Frieren y mas",
     template: "%s | TMO Manga",
