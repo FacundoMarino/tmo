@@ -202,6 +202,104 @@ p {
   margin-bottom: 8px;
 }
 
+.screenshots {
+  margin-top: 24px;
+  padding: 24px;
+  background: color-mix(in srgb, var(--surface) 88%, black);
+  border: 1px solid var(--surface-soft);
+  border-radius: 20px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: center;
+}
+
+.screenshots-copy h2 {
+  margin: 0;
+  font-size: clamp(1.7rem, 3vw, 2.6rem);
+}
+
+.screenshots-copy p {
+  margin-top: 10px;
+}
+
+.screenshots-copy ul {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.screenshots-copy li {
+  position: relative;
+  padding-left: 28px;
+  color: #dbe9ff;
+  font-weight: 600;
+}
+
+.screenshots-copy li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 0.8rem;
+  color: #052e2b;
+  background: #5eead4;
+}
+
+.screenshots-visual {
+  position: relative;
+  min-height: 360px;
+}
+
+.shot {
+  position: absolute;
+  border-radius: 18px;
+  border: 1px solid rgb(148 163 184 / 35%);
+  box-shadow: 0 10px 28px rgb(2 6 23 / 45%);
+  object-fit: cover;
+  background: #020617;
+}
+
+.shot-back {
+  width: 150px;
+  height: 300px;
+  left: 5%;
+  top: 28px;
+  opacity: 0.55;
+}
+
+.shot-left {
+  width: 160px;
+  height: 320px;
+  left: 15%;
+  top: 24px;
+  z-index: 2;
+}
+
+.shot-center {
+  width: 180px;
+  height: 350px;
+  left: 36%;
+  top: 8px;
+  z-index: 4;
+}
+
+.shot-right {
+  width: 160px;
+  height: 320px;
+  left: 62%;
+  top: 22px;
+  z-index: 3;
+  opacity: 0.9;
+}
+
 .contact {
   margin-top: 24px;
   padding: 24px;
@@ -226,11 +324,62 @@ p {
   .download {
     grid-template-columns: 1fr;
   }
+
+  .screenshots {
+    grid-template-columns: 1fr;
+  }
+
+  .screenshots-visual {
+    min-height: 330px;
+  }
+
+  .shot-left {
+    left: 5%;
+  }
+
+  .shot-center {
+    left: 30%;
+  }
+
+  .shot-right {
+    left: 56%;
+  }
 }
 
 @media (max-width: 640px) {
   .navbar {
     flex-direction: column;
     gap: 10px;
+  }
+
+  .screenshots {
+    padding: 18px;
+  }
+
+  .screenshots-visual {
+    min-height: 280px;
+  }
+
+  .shot-back {
+    width: 110px;
+    height: 230px;
+    left: 0;
+    top: 36px;
+  }
+
+  .shot-left,
+  .shot-right {
+    width: 120px;
+    height: 250px;
+  }
+
+  .shot-center {
+    width: 130px;
+    height: 270px;
+    left: 33%;
+  }
+
+  .shot-right {
+    left: 61%;
   }
 }

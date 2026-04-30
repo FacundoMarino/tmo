@@ -9,7 +9,7 @@ const bannerImageUrl =
 const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(
   downloadUrl,
 )}`;
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://tmomanga.app";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://tmomanga.xyz";
 
 export default function Home() {
   const bannerStyle = {
@@ -39,6 +39,7 @@ export default function Home() {
         </a>
         <nav>
           <a href="#inicio">Inicio</a>
+          <a href="#capturas">Capturas</a>
           <a href="#descarga">Descarga</a>
           <a href="#contacto">Contacto</a>
         </nav>
@@ -81,6 +82,27 @@ export default function Home() {
             una sola app.
           </p>
         </article>
+      </section>
+
+      <section id="capturas" className="screenshots" aria-label="Capturas de la app">
+        <div className="screenshots-visual" aria-hidden="true">
+          <img className="shot shot-back" src="/img4.jpeg" alt="" loading="lazy" />
+          <img className="shot shot-left" src="/img1.jpeg" alt="" loading="lazy" />
+          <img className="shot shot-center" src="/img2.jpeg" alt="" loading="lazy" />
+          <img className="shot shot-right" src="/img3.jpeg" alt="" loading="lazy" />
+        </div>
+        <div className="screenshots-copy">
+          <h2>Un adelanto de TMO Manga</h2>
+          <p>
+            Mira como se ve la app antes de descargarla. Diseno limpio, lectura
+            comoda y acceso rapido a tus mangas favoritos.
+          </p>
+          <ul>
+            <li>Biblioteca organizada para continuar donde te quedaste.</li>
+            <li>Lectura fluida en vertical con buena legibilidad.</li>
+            <li>Exploracion rapida para descubrir nuevas series.</li>
+          </ul>
+        </div>
       </section>
 
       <section id="descarga" className="download">

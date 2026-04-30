@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://tmomanga.app/sitemap.xml
+Sitemap: https://tmomanga.xyz/sitemap.xml
