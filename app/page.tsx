@@ -37,7 +37,9 @@ export default function Home() {
         const genreData = await fetchGenres();
         setGenres(genreData);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Error cargando categorias");
+        setError(
+          err instanceof Error ? err.message : "Error cargando categorias",
+        );
       }
     };
     void loadGenres();
@@ -56,7 +58,11 @@ export default function Home() {
           return;
         }
         if (selectedGenre) {
-          const result = await fetchMangasByGenre(selectedGenre, genrePage, PAGE_SIZE);
+          const result = await fetchMangasByGenre(
+            selectedGenre,
+            genrePage,
+            PAGE_SIZE,
+          );
           setMangas(result.items);
           setHasNextGenrePage(result.items.length >= result.pageSize);
           return;
@@ -65,7 +71,9 @@ export default function Home() {
         setMangas(result);
         setHasNextGenrePage(false);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Error cargando catalogo");
+        setError(
+          err instanceof Error ? err.message : "Error cargando catalogo",
+        );
       } finally {
         setLoading(false);
       }
@@ -89,7 +97,6 @@ export default function Home() {
     <AppShell>
       <section className="catalog-header">
         <h1>Explorar Manga</h1>
-        <p>Lectura web con estructura app y llamadas enmascaradas por API propia.</p>
       </section>
 
       <section className="catalog-toolbar">
