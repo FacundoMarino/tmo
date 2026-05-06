@@ -1,32 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-
-const appDeepLink =
-  process.env.NEXT_PUBLIC_APP_DEEPLINK ?? "tmomanga://auth/callback";
-
-function buildTargetDeepLink() {
-  if (typeof window === "undefined") {
-    return appDeepLink;
-  }
-
-  const query = window.location.search;
-  const hash = window.location.hash;
-  return `${appDeepLink}${query}${hash}`;
-}
+import { useEffect } from "react";
+import { useState } from "react";
 
 export default function ConfirmRedirectPage() {
-  const [hasRedirected, setHasRedirected] = useState(false);
-  const targetUrl = useMemo(() => buildTargetDeepLink(), []);
+  const [code, setCode] = useState<string | null>(null);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setHasRedirected(true);
-      window.location.replace(targetUrl);
-    }, 700);
+    setCode(new URLSearchParams(window.location.search).get("code"));
+  }, []);
 
-    return () => window.clearTimeout(timer);
-  }, [targetUrl]);
+  useEffect(() => {
+    if (!code) {
+      return;
+    }
+    window.location.replace(`/api/auth/confirm?code=${encodeURIComponent(code)}`);
+  }, [code]);
 
   return (
     <main
@@ -56,25 +45,10 @@ export default function ConfirmRedirectPage() {
           Email confirmado en TMO Manga
         </h1>
         <p style={{ color: "#94a3b8", lineHeight: 1.6 }}>
-          {hasRedirected
-            ? "Abriendo la app..."
-            : "Estamos validando tu confirmacion y redirigiendo a la app."}
+          {code
+            ? "Validando confirmación y creando sesión segura..."
+            : "No encontramos un código válido en la URL de confirmación."}
         </p>
-        <a
-          href={targetUrl}
-          style={{
-            display: "inline-block",
-            marginTop: 8,
-            textDecoration: "none",
-            color: "#022c43",
-            fontWeight: 700,
-            background: "linear-gradient(180deg, #67e8f9, #38bdf8)",
-            borderRadius: 12,
-            padding: "12px 16px",
-          }}
-        >
-          Abrir app manualmente
-        </a>
       </section>
     </main>
   );

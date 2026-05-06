@@ -1,147 +1,177 @@
-import type { CSSProperties } from "react";
+"use client";
 
-const downloadUrl =
-  process.env.NEXT_PUBLIC_DOWNLOAD_URL ?? "https://example.com/descargar-app";
-const bannerImageUrl =
-  process.env.NEXT_PUBLIC_BANNER_IMAGE_URL ??
-  "https://dw9to29mmj727.cloudfront.net/promo/2016/5265-SeriesHeaders_OP_2000x800_wm.jpg";
-
-const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(
-  downloadUrl,
-)}`;
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://tmomanga.xyz";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { AppShell } from "../src/shared/components/AppShell";
+import {
+  fetchGenres,
+  fetchMangas,
+  fetchMangasByGenre,
+  fetchSearchMangas,
+} from "../src/features/manga/services/webApi";
+import { Manga, MangaGenre } from "../src/features/manga/types";
 
 export default function Home() {
-  const bannerStyle = {
-    "--banner-image": `url("${bannerImageUrl}")`,
-  } as CSSProperties;
-  const structuredData = {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    name: "TMO Manga",
-    url: siteUrl,
-    description:
-      "TMO Manga es una app para leer manga online y seguir anime como One Piece y Frieren.",
-    inLanguage: "es",
-    keywords: "TMO, Manga, Anime, One Piece, Frieren",
-  };
+  const router = useRouter();
+  const PAGE_SIZE = 24;
+  const [mangas, setMangas] = useState<Manga[]>([]);
+  const [genres, setGenres] = useState<MangaGenre[]>([]);
+  const [query, setQuery] = useState("");
+  const [selectedGenre, setSelectedGenre] = useState<string>("");
+  const [genrePage, setGenrePage] = useState(1);
+  const [hasNextGenrePage, setHasNextGenrePage] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("q");
+    if (q) {
+      setQuery(q);
+    }
+  }, []);
+
+  useEffect(() => {
+    const loadGenres = async () => {
+      try {
+        const genreData = await fetchGenres();
+        setGenres(genreData);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Error cargando categorias");
+      }
+    };
+    void loadGenres();
+  }, []);
+
+  useEffect(() => {
+    const loadMangaData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const normalizedQuery = query.trim();
+        if (normalizedQuery) {
+          const result = await fetchSearchMangas(normalizedQuery);
+          setMangas(result);
+          setHasNextGenrePage(false);
+          return;
+        }
+        if (selectedGenre) {
+          const result = await fetchMangasByGenre(selectedGenre, genrePage, PAGE_SIZE);
+          setMangas(result.items);
+          setHasNextGenrePage(result.items.length >= result.pageSize);
+          return;
+        }
+        const result = await fetchMangas();
+        setMangas(result);
+        setHasNextGenrePage(false);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Error cargando catalogo");
+      } finally {
+        setLoading(false);
+      }
+    };
+    void loadMangaData();
+  }, [selectedGenre, genrePage, query]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const normalizedQuery = query.trim();
+    if (normalizedQuery) {
+      params.set("q", normalizedQuery);
+    } else {
+      params.delete("q");
+    }
+    const nextUrl = params.toString() ? `/?${params.toString()}` : "/";
+    window.history.replaceState(null, "", nextUrl);
+  }, [query]);
 
   return (
-    <main className="landing">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-      />
-
-      <header className="navbar">
-        <a href="#inicio" className="brand">
-          TMO Manga
-        </a>
-        <nav>
-          <a href="#inicio">Inicio</a>
-          <a href="#capturas">Capturas</a>
-          <a href="#descarga">Descarga</a>
-          <a href="#contacto">Contacto</a>
-        </nav>
-      </header>
-
-      <section id="inicio" className="banner" style={bannerStyle}>
-        <div className="banner-overlay">
-          <h1 className="anime-title">
-            TMO Manga y Anime: lee One Piece, Frieren y mas
-          </h1>
-          <p>
-            TMO es la app para fans de manga y anime. Descubre nuevas historias,
-            sigue tus titulos favoritos y lee manga online de forma comoda.
-          </p>
-        </div>
+    <AppShell>
+      <section className="catalog-header">
+        <h1>Explorar Manga</h1>
+        <p>Lectura web con estructura app y llamadas enmascaradas por API propia.</p>
       </section>
 
-      <section
-        className="features"
-        aria-label="Beneficios de TMO Manga y Anime"
-      >
-        <article>
-          <h2>Lee manga online con estilo anime</h2>
-          <p>
-            Disfruta una lectura fluida en TMO Manga, pensada para fans de anime
-            y manga en espanol.
-          </p>
-        </article>
-        <article>
-          <h2>Explora One Piece, Frieren y mas</h2>
-          <p>
-            Descubre mangas y animes populares como One Piece y Frieren, junto a
-            nuevas series para maratonear.
-          </p>
-        </article>
-        <article>
-          <h2>Tu biblioteca TMO en un solo lugar</h2>
-          <p>
-            Guarda favoritos y retoma tu manga donde te quedaste, todo dentro de
-            una sola app.
-          </p>
-        </article>
+      <section className="catalog-toolbar">
+        <input
+          className="catalog-input"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setGenrePage(1);
+          }}
+          placeholder="Buscar por titulo o genero"
+        />
+        <select
+          className="catalog-select"
+          value={selectedGenre}
+          onChange={(e) => {
+            setSelectedGenre(e.target.value);
+            setGenrePage(1);
+          }}
+        >
+          <option value="">Todas las categorias</option>
+          {genres.map((genre) => (
+            <option key={genre.name} value={genre.name}>
+              {genre.name} ({genre.total})
+            </option>
+          ))}
+        </select>
       </section>
 
-      <section id="capturas" className="screenshots" aria-label="Capturas de la app">
-        <div className="screenshots-visual" aria-hidden="true">
-          <img className="shot shot-back" src="/img4.jpeg" alt="" loading="lazy" />
-          <img className="shot shot-left" src="/img1.jpeg" alt="" loading="lazy" />
-          <img className="shot shot-center" src="/img2.jpeg" alt="" loading="lazy" />
-          <img className="shot shot-right" src="/img3.jpeg" alt="" loading="lazy" />
-        </div>
-        <div className="screenshots-copy">
-          <h2>Un adelanto de TMO Manga</h2>
-          <p>
-            Mira como se ve la app antes de descargarla. Diseno limpio, lectura
-            comoda y acceso rapido a tus mangas favoritos.
-          </p>
-          <ul>
-            <li>Biblioteca organizada para continuar donde te quedaste.</li>
-            <li>Lectura fluida en vertical con buena legibilidad.</li>
-            <li>Exploracion rapida para descubrir nuevas series.</li>
-          </ul>
-        </div>
-      </section>
+      {loading ? <p>Cargando manga...</p> : null}
+      {error ? <p className="error-text">Error: {error}</p> : null}
 
-      <section id="descarga" className="download">
-        <div className="download-copy">
-          <h2>Descarga TMO Manga ahora</h2>
-          <p>
-            Escanea el QR para descargar la app de manga y anime. Empieza a leer
-            One Piece, Frieren y tus titulos favoritos hoy mismo.
-          </p>
-          <a
-            className="button"
-            href={downloadUrl}
-            target="_blank"
-            rel="noreferrer"
+      {selectedGenre && !query.trim() ? (
+        <section className="pagination-row">
+          <button
+            className="button ghost-button"
+            disabled={genrePage <= 1 || loading}
+            onClick={() => setGenrePage((prev) => Math.max(1, prev - 1))}
           >
-            Descargar ahora
-          </a>
-        </div>
-        <div className="qr-card">
-          <img
-            src={qrUrl}
-            alt="QR para descargar la app"
-            width={220}
-            height={220}
-          />
-        </div>
-      </section>
+            Anterior
+          </button>
+          <span>Pagina {genrePage}</span>
+          <button
+            className="button ghost-button"
+            disabled={!hasNextGenrePage || loading}
+            onClick={() => setGenrePage((prev) => prev + 1)}
+          >
+            Siguiente
+          </button>
+        </section>
+      ) : null}
 
-      <section id="contacto" className="contact">
-        <h2>Contacto TMO Manga</h2>
-        <p>
-          Para soporte, colaboraciones o consultas sobre TMO, Manga y Anime,
-          escribenos a{" "}
-          <a href="mailto:tmomangasupport@gmail.com">
-            tmomangasupport@gmail.com
-          </a>
-          .
-        </p>
+      <section className="manga-grid">
+        {mangas.map((manga) => (
+          <article
+            className="manga-card"
+            key={manga.id}
+            role="button"
+            tabIndex={0}
+            onClick={() => router.push(`/manga/${manga.id}`)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                router.push(`/manga/${manga.id}`);
+              }
+            }}
+          >
+            <img src={manga.coverUrl} alt={manga.title} loading="lazy" />
+            <div>
+              <h3>{manga.title}</h3>
+              <p className="manga-description">{manga.description}</p>
+              <Link
+                className="button card-detail-button"
+                href={`/manga/${manga.id}`}
+                onClick={(event) => event.stopPropagation()}
+              >
+                Ver detalle
+              </Link>
+            </div>
+          </article>
+        ))}
       </section>
-    </main>
+    </AppShell>
   );
 }

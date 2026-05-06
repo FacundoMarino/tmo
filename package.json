@@ -9,10 +9,12 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.105.1",
     "@vercel/analytics": "^2.0.1",
     "next": "^15.4.0",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "zustand": "^5.0.12"
   },
   "devDependencies": {
     "@types/node": "^22.15.19",
