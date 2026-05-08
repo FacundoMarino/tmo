@@ -22,7 +22,69 @@ function getSourceHeaders() {
     "User-Agent":
       process.env.MANGA_SOURCE_USER_AGENT ??
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "same-origin",
+    "Sec-CH-UA": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+    "Sec-CH-UA-Mobile": "?0",
+    "Sec-CH-UA-Platform": '"Windows"',
   };
+}
+
+/** Shape returned by `/listas`; reused when falling back through `/series-locales`. */
+export type HomeMangaListaItem = {
+  serie?: {
+    id: string;
+    titulo: string;
+    portadaUrl: string | null;
+    descripcion: string | null;
+  } | null;
+};
+
+export type HomeMangaListasPayload = Array<{ items: HomeMangaListaItem[] }>;
+
+type SeriesLocaleRow = {
+  id: number;
+  titulo: string;
+  portadaUrl: string | null;
+  descripcion?: string | null;
+};
+
+function rowsToHomeListasPayload(rows: SeriesLocaleRow[]): HomeMangaListasPayload {
+  return [
+    {
+      items: rows.map((row) => ({
+        serie: {
+          id: String(row.id),
+          titulo: row.titulo,
+          portadaUrl: row.portadaUrl,
+          descripcion: row.descripcion ?? null,
+        },
+      })),
+    },
+  ];
+}
+
+/**
+ * Homepage lists: prefers `/listas`. If unavailable (blocked path, geo/WAF),
+ * fills from paginated `/series-locales` so the catalog still loads.
+ */
+export async function fetchHomeMangaListasPayload(): Promise<HomeMangaListasPayload> {
+  try {
+    return await fetchJsonWithRetry<HomeMangaListasPayload>(
+      buildSourceUrl("/listas"),
+      "listas de mangas",
+    );
+  } catch {
+    const rows = await fetchJsonWithRetry<SeriesLocaleRow[]>(
+      buildSourceUrl("/series-locales?page=1&pageSize=72"),
+      "directorio de mangas (respaldo)",
+    );
+    if (!Array.isArray(rows)) {
+      throw new Error("Respuesta invalida del directorio de mangas");
+    }
+    return rowsToHomeListasPayload(rows);
+  }
 }
 
 export async function fetchJsonWithRetry<T>(url: string, resourceName: string): Promise<T> {

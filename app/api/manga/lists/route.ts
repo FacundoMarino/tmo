@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { buildSourceUrl, fetchJsonWithRetry } from "../../../../src/lib/server/manga-source";
+import { fetchHomeMangaListasPayload } from "../../../../src/lib/server/manga-source";
 import { jsonError } from "../../../../src/lib/server/api";
 
 export const runtime = "nodejs";
 
 export async function GET() {
   try {
-    const data = await fetchJsonWithRetry(buildSourceUrl("/listas"), "listas de mangas");
+    const data = await fetchHomeMangaListasPayload();
     return NextResponse.json(data);
   } catch (error) {
     return jsonError(
