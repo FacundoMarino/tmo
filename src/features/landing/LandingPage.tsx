@@ -68,6 +68,9 @@ export function LandingPage() {
             Disfruta una lectura fluida en TMO Manga, pensada para fans de anime
             y manga en espanol.
           </p>
+          <a className="button feature-cta" href="/">
+            Continuar leyendo
+          </a>
         </article>
         <article>
           <h2>Explora One Piece, Frieren y mas</h2>
@@ -89,7 +92,9 @@ export function LandingPage() {
         <div className="screenshots-visual" aria-hidden="true">
           <img className="shot shot-back" src="/img4.jpeg" alt="" loading="lazy" />
           <img className="shot shot-left" src="/img1.jpeg" alt="" loading="lazy" />
+          <div className="shot-banner shot-banner-one">Mangas en tendencia</div>
           <img className="shot shot-center" src="/img2.jpeg" alt="" loading="lazy" />
+          <div className="shot-banner shot-banner-two">Continuar lectura</div>
           <img className="shot shot-right" src="/img3.jpeg" alt="" loading="lazy" />
         </div>
         <div className="screenshots-copy">

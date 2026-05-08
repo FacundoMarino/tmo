@@ -2,6 +2,7 @@ import { SERVER_ENV } from "../config";
 
 const RETRYABLE = new Set([429, 500, 502, 503, 504]);
 const REQUEST_TIMEOUT_MS = 15000;
+const DEFAULT_REVALIDATE_SECONDS = 60;
 
 async function sleep(ms: number) {
   await new Promise((resolve) => setTimeout(resolve, ms));
@@ -31,16 +32,22 @@ export async function fetchJsonWithRetry<T>(url: string, resourceName: string): 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
       const response = await fetch(url, {
-        cache: "no-store",
+        cache: "force-cache",
         headers: getSourceHeaders(),
+        next: { revalidate: DEFAULT_REVALIDATE_SECONDS },
         redirect: "follow",
         signal: controller.signal,
       }).finally(() => clearTimeout(timeoutId));
       if (response.ok) {
         return (await response.json()) as T;
       }
+      const retryAfterHeader = response.headers.get("retry-after");
+      const retryAfterSeconds = retryAfterHeader ? Number.parseInt(retryAfterHeader, 10) : Number.NaN;
       if (!RETRYABLE.has(response.status) || attempt === 2) {
         throw new Error(`No se pudo cargar ${resourceName}: ${response.status}`);
+      }
+      if (response.status === 429 && Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
+        await sleep(Math.min(retryAfterSeconds * 1000, 5000));
       }
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {

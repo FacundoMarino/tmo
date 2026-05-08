@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { buildSourceUrl, fetchJsonWithRetry } from "../../../../src/lib/server/manga-source";
 import { jsonError } from "../../../../src/lib/server/api";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
   const genre = request.nextUrl.searchParams.get("genre");

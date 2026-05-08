@@ -15,9 +15,18 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: radial-gradient(circle at top, #172554 0%, var(--bg) 40%, #020617 100%);
+  background: radial-gradient(
+    circle at top,
+    #172554 0%,
+    var(--bg) 40%,
+    #020617 100%
+  );
   color: var(--text);
-  font-family: Inter, Segoe UI, Roboto, sans-serif;
+  font-family:
+    Inter,
+    Segoe UI,
+    Roboto,
+    sans-serif;
 }
 
 .landing {
@@ -39,7 +48,9 @@ body {
   border: 1px solid var(--surface-soft);
   border-radius: 14px;
   backdrop-filter: blur(8px);
-  box-shadow: 0 0 0 1px rgb(56 189 248 / 10%), 0 10px 30px rgb(2 6 23 / 35%);
+  box-shadow:
+    0 0 0 1px rgb(56 189 248 / 10%),
+    0 10px 30px rgb(2 6 23 / 35%);
 }
 
 .brand {
@@ -84,8 +95,16 @@ body {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 18% 18%, rgb(56 189 248 / 28%) 0%, transparent 36%),
-    radial-gradient(circle at 85% 10%, rgb(244 114 182 / 24%) 0%, transparent 30%);
+    radial-gradient(
+      circle at 18% 18%,
+      rgb(56 189 248 / 28%) 0%,
+      transparent 36%
+    ),
+    radial-gradient(
+      circle at 85% 10%,
+      rgb(244 114 182 / 24%) 0%,
+      transparent 30%
+    );
   pointer-events: none;
 }
 
@@ -96,7 +115,11 @@ body {
   flex-direction: column;
   justify-content: flex-end;
   padding: 28px;
-  background: linear-gradient(180deg, rgb(2 6 23 / 20%) 0%, rgb(2 6 23 / 88%) 100%);
+  background: linear-gradient(
+    180deg,
+    rgb(2 6 23 / 20%) 0%,
+    rgb(2 6 23 / 88%) 100%
+  );
 }
 
 .badge {
@@ -140,7 +163,9 @@ p {
   border-radius: 12px;
   padding: 12px 18px;
   box-shadow: 0 0 20px rgb(56 189 248 / 25%);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .button:hover {
@@ -473,13 +498,18 @@ p {
   border-radius: 12px;
   overflow: hidden;
   cursor: pointer;
-  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+  transition:
+    transform 0.22s ease,
+    box-shadow 0.22s ease,
+    border-color 0.22s ease;
 }
 
 .manga-card:hover {
   transform: translateY(-6px);
   border-color: rgb(56 189 248 / 55%);
-  box-shadow: 0 14px 28px rgb(2 6 23 / 45%), 0 0 0 1px rgb(56 189 248 / 22%);
+  box-shadow:
+    0 14px 28px rgb(2 6 23 / 45%),
+    0 0 0 1px rgb(56 189 248 / 22%);
 }
 
 .manga-card img {
@@ -557,8 +587,65 @@ p {
   background: #020617;
 }
 
+.reader-banner-card {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid #334155;
+  background: #020617;
+  overflow: hidden;
+}
+
+.reader-banner-start,
+.reader-banner-end {
+  min-height: 110px;
+}
+
+.reader-banner-middle {
+  min-height: 290px;
+}
+
+.reader-banner-card iframe {
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+  border: 0;
+  display: block;
+}
+
+.reader-external-card {
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 12px;
+  background: #0b1220;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.reader-external-card p {
+  margin: 0;
+  color: #cbd5e1;
+}
+
+.reader-external-card a {
+  color: #67e8f9;
+  font-weight: 700;
+  text-decoration: none;
+}
+
 .reader-strip.horizontal img {
   min-width: 380px;
+  max-width: 70vw;
+}
+
+.reader-strip.horizontal .reader-banner-card {
+  min-width: 320px;
+  max-width: 70vw;
+}
+
+.reader-strip.horizontal .reader-external-card {
+  min-width: 320px;
   max-width: 70vw;
 }
 
