@@ -14,18 +14,21 @@ function getSourceHeaders() {
 
   return {
     Accept: "application/json, text/plain, */*",
-    "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
+    "Accept-Language":
+      process.env.MANGA_SOURCE_ACCEPT_LANGUAGE ?? "es-ES,es;q=0.9,it;q=0.8,pt;q=0.7",
     "Cache-Control": "no-cache",
     Pragma: "no-cache",
     Referer: process.env.MANGA_SOURCE_REFERER ?? `${sourceOrigin}/`,
     Origin: process.env.MANGA_SOURCE_ORIGIN ?? sourceOrigin,
     "User-Agent":
       process.env.MANGA_SOURCE_USER_AGENT ??
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
     "Sec-Fetch-Dest": "empty",
     "Sec-Fetch-Mode": "cors",
     "Sec-Fetch-Site": "same-origin",
-    "Sec-CH-UA": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+    "Sec-CH-UA":
+      process.env.MANGA_SOURCE_SEC_CH_UA ??
+      '"Google Chrome";v="147", "Not.A/Brand";v="8", "Chromium";v="147"',
     "Sec-CH-UA-Mobile": "?0",
     "Sec-CH-UA-Platform": '"Windows"',
   };
@@ -128,4 +131,60 @@ export async function fetchJsonWithRetry<T>(url: string, resourceName: string): 
 
 export function buildSourceUrl(path: string) {
   return `${SERVER_ENV.API_BASE_URL}${path}`;
+}
+
+/** Respuesta de `/series-locales/generos` y del respaldo agregado. */
+export type MangaGenreApiRow = {
+  nombre: string;
+  total: number;
+  portadaUrl: string | null;
+};
+
+type SeriesLocaleRowWithGenres = SeriesLocaleRow & {
+  generos?: string | null;
+};
+
+function approximateGenresFromSeriesLocales(rows: SeriesLocaleRowWithGenres[]): MangaGenreApiRow[] {
+  const acc = new Map<string, { total: number; portadaUrl: string | null }>();
+  for (const row of rows) {
+    const parts = (row.generos ?? "")
+      .split(",")
+      .map((v) => v.trim())
+      .filter(Boolean);
+    for (const nombre of parts) {
+      const cur = acc.get(nombre) ?? { total: 0, portadaUrl: null };
+      cur.total += 1;
+      if (!cur.portadaUrl && row.portadaUrl) {
+        cur.portadaUrl = row.portadaUrl;
+      }
+      acc.set(nombre, cur);
+    }
+  }
+  return Array.from(acc.entries()).map(([nombre, { total, portadaUrl }]) => ({
+    nombre,
+    total,
+    portadaUrl,
+  }));
+}
+
+/**
+ * Prefer `/series-locales/generos`. Si esa ruta está cortada (403/404) desde algunos IPs,
+ * inferir géneros desde el listado paginado (totales solo sobre la muestra cargada).
+ */
+export async function fetchHomeMangaGenresPayload(): Promise<MangaGenreApiRow[]> {
+  try {
+    return await fetchJsonWithRetry<MangaGenreApiRow[]>(
+      buildSourceUrl("/series-locales/generos"),
+      "generos de manga",
+    );
+  } catch {
+    const rows = await fetchJsonWithRetry<SeriesLocaleRowWithGenres[]>(
+      buildSourceUrl("/series-locales?page=1&pageSize=96"),
+      "catalogo para generos (respaldo)",
+    );
+    if (!Array.isArray(rows)) {
+      throw new Error("Respuesta invalida para generos de respaldo");
+    }
+    return approximateGenresFromSeriesLocales(rows);
+  }
 }
