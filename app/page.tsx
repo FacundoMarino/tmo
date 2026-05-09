@@ -12,7 +12,7 @@ import {
   fetchMangasByGenre,
   fetchSearchMangas,
 } from "../src/features/manga/services/webApi";
-import { MangaGenre } from "../src/features/manga/types";
+import { type Manga, type MangaGenre } from "../src/features/manga/types";
 
 export default function Home() {
   const router = useRouter();
@@ -100,6 +100,40 @@ export default function Home() {
     window.history.replaceState(null, "", nextUrl);
   }, [query]);
 
+  const useHorizontalRails = query.trim().length === 0 && !selectedGenre;
+
+  const renderPosterCard = (manga: Manga) => (
+    <article
+      className={`manga-card manga-card--poster ${useHorizontalRails ? "manga-card--rail" : "manga-card--grid-slot"}`}
+      key={manga.id}
+      role="button"
+      tabIndex={0}
+      onClick={() => router.push(`/manga/${manga.id}`)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          router.push(`/manga/${manga.id}`);
+        }
+      }}
+    >
+      <div className="manga-card-media">
+        <img
+          src={manga.coverUrl}
+          alt={manga.title}
+          loading="lazy"
+          draggable={false}
+        />
+        <div className="manga-card-overlay" aria-hidden />
+        <div className="manga-card-hover-content">
+          <h3 className="manga-card-hover-title">{manga.title}</h3>
+          <p className="manga-description manga-card-hover-desc">
+            {manga.description}
+          </p>
+        </div>
+      </div>
+    </article>
+  );
+
   return (
     <AppShell>
       <section className="catalog-header">
@@ -163,39 +197,11 @@ export default function Home() {
             <h2 id={headingId} className="catalog-section-heading">
               {sec.title}
             </h2>
-            <MangaRail labelledBy={headingId}>
-              {sec.mangas.map((manga) => (
-                <article
-                  className="manga-card manga-card--rail manga-card--poster"
-                  key={manga.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => router.push(`/manga/${manga.id}`)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      router.push(`/manga/${manga.id}`);
-                    }
-                  }}
-                >
-                  <div className="manga-card-media">
-                    <img
-                      src={manga.coverUrl}
-                      alt={manga.title}
-                      loading="lazy"
-                      draggable={false}
-                    />
-                    <div className="manga-card-overlay" aria-hidden />
-                    <div className="manga-card-hover-content">
-                      <h3 className="manga-card-hover-title">{manga.title}</h3>
-                      <p className="manga-description manga-card-hover-desc">
-                        {manga.description}
-                      </p>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </MangaRail>
+            {useHorizontalRails ? (
+              <MangaRail labelledBy={headingId}>{sec.mangas.map(renderPosterCard)}</MangaRail>
+            ) : (
+              <div className="manga-grid manga-grid--catalog">{sec.mangas.map(renderPosterCard)}</div>
+            )}
           </section>
         );
       })}
