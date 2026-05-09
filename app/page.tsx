@@ -1,22 +1,23 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AppShell } from "../src/shared/components/AppShell";
+import { MangaRail } from "../src/shared/components/MangaRail";
 import { LoadingSpinner } from "../src/shared/components/LoadingSpinner";
 import {
+  type MangaCatalogSection,
   fetchGenres,
-  fetchMangas,
+  fetchHomeCatalogSections,
   fetchMangasByGenre,
   fetchSearchMangas,
 } from "../src/features/manga/services/webApi";
-import { Manga, MangaGenre } from "../src/features/manga/types";
+import { MangaGenre } from "../src/features/manga/types";
 
 export default function Home() {
   const router = useRouter();
   const PAGE_SIZE = 24;
-  const [mangas, setMangas] = useState<Manga[]>([]);
+  const [sections, setSections] = useState<MangaCatalogSection[]>([]);
   const [genres, setGenres] = useState<MangaGenre[]>([]);
   const [query, setQuery] = useState("");
   const [selectedGenre, setSelectedGenre] = useState<string>("");
@@ -54,7 +55,12 @@ export default function Home() {
         const normalizedQuery = query.trim();
         if (normalizedQuery) {
           const result = await fetchSearchMangas(normalizedQuery);
-          setMangas(result);
+          setSections([
+            {
+              title: `Búsqueda: ${normalizedQuery}`,
+              mangas: result,
+            },
+          ]);
           setHasNextGenrePage(false);
           return;
         }
@@ -64,12 +70,12 @@ export default function Home() {
             genrePage,
             PAGE_SIZE,
           );
-          setMangas(result.items);
+          setSections([{ title: selectedGenre, mangas: result.items }]);
           setHasNextGenrePage(result.items.length >= result.pageSize);
           return;
         }
-        const result = await fetchMangas();
-        setMangas(result);
+        const result = await fetchHomeCatalogSections();
+        setSections(result);
         setHasNextGenrePage(false);
       } catch (err) {
         setError(
@@ -150,36 +156,49 @@ export default function Home() {
         </section>
       ) : null}
 
-      <section className="manga-grid">
-        {mangas.map((manga) => (
-          <article
-            className="manga-card"
-            key={manga.id}
-            role="button"
-            tabIndex={0}
-            onClick={() => router.push(`/manga/${manga.id}`)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                router.push(`/manga/${manga.id}`);
-              }
-            }}
-          >
-            <img src={manga.coverUrl} alt={manga.title} loading="lazy" />
-            <div>
-              <h3>{manga.title}</h3>
-              <p className="manga-description">{manga.description}</p>
-              <Link
-                className="button card-detail-button"
-                href={`/manga/${manga.id}`}
-                onClick={(event) => event.stopPropagation()}
-              >
-                Ver detalle
-              </Link>
-            </div>
-          </article>
-        ))}
-      </section>
+      {sections.map((sec, secIdx) => {
+        const headingId = `catalog-heading-${secIdx}`;
+        return (
+          <section className="catalog-section-block" key={`${sec.title}-${secIdx}`}>
+            <h2 id={headingId} className="catalog-section-heading">
+              {sec.title}
+            </h2>
+            <MangaRail labelledBy={headingId}>
+              {sec.mangas.map((manga) => (
+                <article
+                  className="manga-card manga-card--rail manga-card--poster"
+                  key={manga.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => router.push(`/manga/${manga.id}`)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      router.push(`/manga/${manga.id}`);
+                    }
+                  }}
+                >
+                  <div className="manga-card-media">
+                    <img
+                      src={manga.coverUrl}
+                      alt={manga.title}
+                      loading="lazy"
+                      draggable={false}
+                    />
+                    <div className="manga-card-overlay" aria-hidden />
+                    <div className="manga-card-hover-content">
+                      <h3 className="manga-card-hover-title">{manga.title}</h3>
+                      <p className="manga-description manga-card-hover-desc">
+                        {manga.description}
+                      </p>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </MangaRail>
+          </section>
+        );
+      })}
     </AppShell>
   );
 }

@@ -8,7 +8,13 @@ export type HomeMangaListaItem = {
   } | null;
 };
 
-export type HomeMangaListasPayload = Array<{ items: HomeMangaListaItem[] }>;
+/** `title` aparece en home Mangadex (varios railes); el backend clasico suele omitirlo. */
+export type HomeMangaListaSection = {
+  title?: string;
+  items: HomeMangaListaItem[];
+};
+
+export type HomeMangaListasPayload = HomeMangaListaSection[];
 
 /** Respuesta de `/series-locales/generos` y del respaldo agregado. */
 export type MangaGenreApiRow = {

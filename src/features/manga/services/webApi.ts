@@ -46,25 +46,51 @@ function mapManga(raw: {
   };
 }
 
-export async function fetchMangas(): Promise<Manga[]> {
+type ListPayloadItem = {
+  serie?: {
+    id: string;
+    titulo: string;
+    portadaUrl: string | null;
+    descripcion: string | null;
+  } | null;
+};
+
+export type MangaCatalogSection = {
+  title: string;
+  mangas: Manga[];
+};
+
+function mapListItemToManga(item: { serie?: ListPayloadItem["serie"] }): Manga | null {
+  if (!item.serie) return null;
+  return mapManga({ ...item.serie, id: item.serie.id });
+}
+
+async function fetchMangaListsPayload(): Promise<Array<{ title?: string; items: ListPayloadItem[] }>> {
   const response = await fetch("/api/manga/lists", { cache: "no-store" });
-  const lists = await readJson<
-    Array<{
-      items: Array<{
-        serie?: {
-          id: string;
-          titulo: string;
-          portadaUrl: string | null;
-          descripcion: string | null;
-        } | null;
-      }>;
-    }>
-  >(response);
+  return await readJson<Array<{ title?: string; items: ListPayloadItem[] }>>(response);
+}
+
+/** Home: varios railes (`title` desde API cuando hay backend Mangadex). */
+export async function fetchHomeCatalogSections(): Promise<MangaCatalogSection[]> {
+  const lists = await fetchMangaListsPayload();
+  return lists.map((list, idx) => {
+    const mangas = list.items
+      .map((item) => mapListItemToManga(item))
+      .filter((m): m is Manga => m !== null);
+    const title = list.title?.trim() || `Lista ${idx + 1}`;
+    return { title, mangas };
+  });
+}
+
+/** Union de todas las listas (historial, favoritos, etc.) sin duplicar por id. */
+export async function fetchMangas(): Promise<Manga[]> {
+  const lists = await fetchMangaListsPayload();
   const byId = new Map<string, Manga>();
   for (const list of lists) {
     for (const item of list.items) {
-      if (!item.serie || byId.has(item.serie.id)) continue;
-      byId.set(item.serie.id, mapManga({ ...item.serie, id: item.serie.id }));
+      const m = mapListItemToManga(item);
+      if (!m || byId.has(m.id)) continue;
+      byId.set(m.id, m);
     }
   }
   return Array.from(byId.values());

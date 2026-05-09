@@ -55,6 +55,7 @@ type SeriesLocaleRow = {
 function rowsToHomeListasPayload(rows: SeriesLocaleRow[]): HomeMangaListasPayload {
   return [
     {
+      title: "Catálogo",
       items: rows.map((row) => ({
         serie: {
           id: String(row.id),
@@ -227,8 +228,7 @@ export async function fetchBackendSearchCandidates(
   take: number,
 ): Promise<SearchCandidate[]> {
   if (SERVER_ENV.MANGA_BACKEND === "mangadex") {
-    const rows = await mangadexSearchCandidates(query);
-    return rows.slice(0, Math.max(0, take));
+    return mangadexSearchCandidates(query, take);
   }
 
   const data = await fetchJsonWithRetry<SearchCandidate[]>(

@@ -1,6 +1,10 @@
 import { SERVER_ENV } from "../config";
 
-import type { HomeMangaListasPayload, HomeMangaListaItem, MangaGenreApiRow } from "./manga-contracts";
+import type {
+  HomeMangaListasPayload,
+  HomeMangaListaItem,
+  MangaGenreApiRow,
+} from "./manga-contracts";
 import { wrapMangadexImageUrlForClient } from "./mangadex-image-proxy";
 
 const MD_API = "https://api.mangadex.org";
@@ -294,11 +298,44 @@ function parseCommaEnv(value: string | undefined): string[] {
 }
 
 /** Orden de listados `GET /manga` (p. ej. latestUploadedChapter, rating, followedCount). */
+function mangadexOrderQsFrom(orderKey: string, direction?: "asc" | "desc"): string {
+  const dirRaw = process.env.MANGA_DEX_ORDER_DIRECTION?.trim().toLowerCase();
+  const dir =
+    direction ?? (dirRaw === "asc" ? "asc" : "desc");
+  return `order[${orderKey}]=${dir}`;
+}
+
 function mangadexOrderQs(): string {
   const key = process.env.MANGA_DEX_ORDER_FIELD?.trim() || "latestUploadedChapter";
-  const dirRaw = process.env.MANGA_DEX_ORDER_DIRECTION?.trim().toLowerCase();
-  const dir = dirRaw === "asc" ? "asc" : "desc";
-  return `order[${key}]=${dir}`;
+  return mangadexOrderQsFrom(key);
+}
+
+const HOME_SECTION_LIMIT = Math.min(Math.max(Number.parseInt(process.env.MANGA_DEX_HOME_RAIL_LIMIT ?? "28", 10) || 28, 1), 100);
+
+async function mangadexHomeRailItems(orderKey: string, orderDirection: "asc" | "desc"): Promise<HomeMangaListaItem[]> {
+  const parts = [`limit=${HOME_SECTION_LIMIT}`, contentRatingsQs(), mangadexOrderQsFrom(orderKey, orderDirection)];
+  appendAvailableTranslatedLanguages(parts);
+  await mangadexAppendReferenceFilters(parts);
+  const qs = parts.join("&");
+  const embedded = "&includes[]=cover_art&includes[]=artist&includes[]=author";
+  type Coll = { result: string; data?: MdEntity<"manga">[]; included?: MdEntity[] };
+  const res = await mdFetchJson<Coll>(`/manga?${qs}${embedded}`, `catalogo Mangadex (${orderKey})`);
+  const mangas = res.data ?? [];
+  const included = res.included ?? [];
+  return mangas.map((m) => {
+    const attrs = m.attributes ?? {};
+    const titulo = mangaTitle(attrs as Parameters<typeof mangaTitle>[0]);
+    const descripcion = mangaDescription(attrs as Parameters<typeof mangaDescription>[0]);
+    const url = resolveCover(m, included) ?? SERVER_ENV.MANGA_FALLBACK_COVER_URL;
+    return {
+      serie: {
+        id: m.id,
+        titulo,
+        portadaUrl: url,
+        descripcion,
+      },
+    };
+  });
 }
 
 function appendAvailableTranslatedLanguages(qsParts: string[]): void {
@@ -366,31 +403,17 @@ async function mangadexAllTagsCached(): Promise<TagRow[]> {
 }
 
 export async function mangadexFetchHomeMangaListasPayload(): Promise<HomeMangaListasPayload> {
-  const parts = [`limit=72`, contentRatingsQs(), mangadexOrderQs()];
-  appendAvailableTranslatedLanguages(parts);
-  await mangadexAppendReferenceFilters(parts);
-  const qs = parts.join("&");
-  const embedded = "&includes[]=cover_art&includes[]=artist&includes[]=author";
-  type Coll = { result: string; data?: MdEntity<"manga">[]; included?: MdEntity[] };
-  const res = await mdFetchJson<Coll>(`/manga?${qs}${embedded}`, "catalogo Mangadex");
-  const mangas = res.data ?? [];
-  const included = res.included ?? [];
-  const items: HomeMangaListaItem[] = mangas.map((m) => {
-    const attrs = m.attributes ?? {};
-    const titulo = mangaTitle(attrs as Parameters<typeof mangaTitle>[0]);
-    const descripcion = mangaDescription(attrs as Parameters<typeof mangaDescription>[0]);
-    const url = resolveCover(m, included) ?? SERVER_ENV.MANGA_FALLBACK_COVER_URL;
-    return {
-      serie: {
-        id: m.id,
-        titulo,
-        portadaUrl: url,
-        descripcion,
-      },
-    };
-  });
+  const [byRating, byFollowers, az] = await Promise.all([
+    mangadexHomeRailItems("rating", "desc"),
+    mangadexHomeRailItems("followedCount", "desc"),
+    mangadexHomeRailItems("title", "asc"),
+  ]);
 
-  return [{ items }];
+  return [
+    { title: "Más leídos", items: byRating },
+    { title: "Más populares", items: byFollowers },
+    { title: "Todos los mangas", items: az },
+  ];
 }
 
 async function mangadexAllGenreTags(): Promise<TagRow[]> {
@@ -482,6 +505,7 @@ async function mangadexResolveGenreTagIds(genreName: string): Promise<string[]> 
 
 export async function mangadexSearchCandidates(
   query: string,
+  take: number,
 ): Promise<
   Array<{
     id: string | number;
@@ -492,29 +516,75 @@ export async function mangadexSearchCandidates(
   }>
 > {
   const titleRaw = query.trim();
-  const qsParts = [`title=${encodeURIComponent(titleRaw)}`, "limit=50", contentRatingsQs(), mangadexOrderQs()];
-  appendAvailableTranslatedLanguages(qsParts);
-  await mangadexAppendReferenceFilters(qsParts);
-  const embedded = "&includes[]=cover_art&includes[]=artist&includes[]=author&includes[]=tag";
-  type Coll = { data?: MdEntity<"manga">[]; included?: MdEntity[] };
-  const res = await mdFetchJson<Coll>(
-    `/manga?${qsParts.join("&")}${embedded}`,
-    `busqueda Mangadex ${titleRaw}`,
-  );
-  const mangas = res.data ?? [];
-  const included = res.included ?? [];
-  const includedTags = included.filter((x): x is MdEntity<"tag"> => x.type === "tag");
+  const want = Math.max(0, Math.min(take, 200));
+  if (want === 0) return [];
 
-  return mangas.map((m) => {
-    const attrs = m.attributes ?? {};
-    return {
-      id: m.id,
-      titulo: mangaTitle(attrs as Parameters<typeof mangaTitle>[0]),
-      portadaUrl: resolveCover(m, included),
-      descripcion: mangaDescription(attrs as Parameters<typeof mangaDescription>[0]),
-      generos: genreNamesFromIncluded(attrs as Record<string, unknown>, includedTags),
-    };
-  });
+  const pageSize = 100;
+  const embedded = "&includes[]=cover_art&includes[]=artist&includes[]=author&includes[]=tag";
+  type Coll = { data?: MdEntity<"manga">[]; included?: MdEntity[]; total?: number };
+  const out: Array<{
+    id: string | number;
+    titulo: string;
+    portadaUrl: string | null;
+    descripcion: string | null;
+    generos?: string | null;
+  }> = [];
+  const seen = new Set<string>();
+
+  for (let offset = 0; out.length < want; offset += pageSize) {
+    const qsParts = [
+      `title=${encodeURIComponent(titleRaw)}`,
+      `limit=${pageSize}`,
+      `offset=${offset}`,
+      contentRatingsQs(),
+      "order[relevance]=desc",
+    ];
+    await mangadexAppendReferenceFilters(qsParts);
+    let res: Coll;
+    try {
+      res = await mdFetchJson<Coll>(
+        `/manga?${qsParts.join("&")}${embedded}`,
+        `busqueda Mangadex ${titleRaw}`,
+      );
+    } catch {
+      const fallback = [
+        `title=${encodeURIComponent(titleRaw)}`,
+        `limit=${pageSize}`,
+        `offset=${offset}`,
+        contentRatingsQs(),
+        mangadexOrderQsFrom("latestUploadedChapter", "desc"),
+      ];
+      await mangadexAppendReferenceFilters(fallback);
+      res = await mdFetchJson<Coll>(
+        `/manga?${fallback.join("&")}${embedded}`,
+        `busqueda Mangadex ${titleRaw} (fallback)`,
+      );
+    }
+
+    const mangas = res.data ?? [];
+    const included = res.included ?? [];
+    const includedTags = included.filter((x): x is MdEntity<"tag"> => x.type === "tag");
+
+    if (mangas.length === 0) break;
+
+    for (const m of mangas) {
+      if (seen.has(m.id)) continue;
+      seen.add(m.id);
+      const attrs = m.attributes ?? {};
+      out.push({
+        id: m.id,
+        titulo: mangaTitle(attrs as Parameters<typeof mangaTitle>[0]),
+        portadaUrl: resolveCover(m, included),
+        descripcion: mangaDescription(attrs as Parameters<typeof mangaDescription>[0]),
+        generos: genreNamesFromIncluded(attrs as Record<string, unknown>, includedTags),
+      });
+      if (out.length >= want) break;
+    }
+
+    if (mangas.length < pageSize) break;
+  }
+
+  return out;
 }
 
 export async function mangadexMangaRowsByGenre(
