@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { buildSourceUrl, fetchJsonWithRetry } from "../../../../src/lib/server/manga-source";
+import { fetchBackendMangaRowsByGenre } from "../../../../src/lib/server/manga-source";
 import { jsonError } from "../../../../src/lib/server/api";
 
 export const runtime = "nodejs";
@@ -17,11 +17,7 @@ export async function GET(request: NextRequest) {
     return jsonError("Parámetro genre requerido.", 400);
   }
   try {
-    const encoded = encodeURIComponent(genre);
-    const data = await fetchJsonWithRetry(
-      buildSourceUrl(`/series-locales?genero=${encoded}&page=${page}&pageSize=${pageSize}`),
-      `mangas del género ${genre}`,
-    );
+    const data = await fetchBackendMangaRowsByGenre(genre, page, pageSize);
     return NextResponse.json({ items: data, page, pageSize });
   } catch (error) {
     return jsonError(

@@ -1,4 +1,15 @@
 import { SERVER_ENV } from "../config";
+import type { HomeMangaListasPayload, MangaGenreApiRow } from "./manga-contracts";
+import {
+  mangadexChapterPages,
+  mangadexFetchHomeGenresPayload,
+  mangadexFetchHomeMangaListasPayload,
+  mangadexMangaDetailSerialized,
+  mangadexMangaRowsByGenre,
+  mangadexSearchCandidates,
+} from "./mangadex-adapter";
+
+export type { HomeMangaListaItem, HomeMangaListasPayload, MangaGenreApiRow } from "./manga-contracts";
 
 const RETRYABLE = new Set([429, 500, 502, 503, 504]);
 const REQUEST_TIMEOUT_MS = 15000;
@@ -34,18 +45,6 @@ function getSourceHeaders() {
   };
 }
 
-/** Shape returned by `/listas`; reused when falling back through `/series-locales`. */
-export type HomeMangaListaItem = {
-  serie?: {
-    id: string;
-    titulo: string;
-    portadaUrl: string | null;
-    descripcion: string | null;
-  } | null;
-};
-
-export type HomeMangaListasPayload = Array<{ items: HomeMangaListaItem[] }>;
-
 type SeriesLocaleRow = {
   id: number;
   titulo: string;
@@ -73,6 +72,10 @@ function rowsToHomeListasPayload(rows: SeriesLocaleRow[]): HomeMangaListasPayloa
  * fills from paginated `/series-locales` so the catalog still loads.
  */
 export async function fetchHomeMangaListasPayload(): Promise<HomeMangaListasPayload> {
+  if (SERVER_ENV.MANGA_BACKEND === "mangadex") {
+    return mangadexFetchHomeMangaListasPayload();
+  }
+
   try {
     return await fetchJsonWithRetry<HomeMangaListasPayload>(
       buildSourceUrl("/listas"),
@@ -133,13 +136,6 @@ export function buildSourceUrl(path: string) {
   return `${SERVER_ENV.API_BASE_URL}${path}`;
 }
 
-/** Respuesta de `/series-locales/generos` y del respaldo agregado. */
-export type MangaGenreApiRow = {
-  nombre: string;
-  total: number;
-  portadaUrl: string | null;
-};
-
 type SeriesLocaleRowWithGenres = SeriesLocaleRow & {
   generos?: string | null;
 };
@@ -172,6 +168,10 @@ function approximateGenresFromSeriesLocales(rows: SeriesLocaleRowWithGenres[]): 
  * inferir géneros desde el listado paginado (totales solo sobre la muestra cargada).
  */
 export async function fetchHomeMangaGenresPayload(): Promise<MangaGenreApiRow[]> {
+  if (SERVER_ENV.MANGA_BACKEND === "mangadex") {
+    return mangadexFetchHomeGenresPayload();
+  }
+
   try {
     return await fetchJsonWithRetry<MangaGenreApiRow[]>(
       buildSourceUrl("/series-locales/generos"),
@@ -187,4 +187,71 @@ export async function fetchHomeMangaGenresPayload(): Promise<MangaGenreApiRow[]>
     }
     return approximateGenresFromSeriesLocales(rows);
   }
+}
+
+export async function fetchBackendMangaDetail(mangaId: string): Promise<unknown> {
+  if (SERVER_ENV.MANGA_BACKEND === "mangadex") {
+    return mangadexMangaDetailSerialized(mangaId);
+  }
+  return fetchJsonWithRetry(
+    buildSourceUrl(`/series-locales/${encodeURIComponent(mangaId)}`),
+    "detalle del manga",
+  );
+}
+
+export async function fetchBackendChapterPages(mangaId: string, chapterId: string): Promise<unknown> {
+  if (SERVER_ENV.MANGA_BACKEND === "mangadex") {
+    const paginas = await mangadexChapterPages(chapterId);
+    return { paginas };
+  }
+  return fetchJsonWithRetry(
+    buildSourceUrl(
+      `/series-locales/${encodeURIComponent(mangaId)}/capitulos/${encodeURIComponent(chapterId)}/paginas`,
+    ),
+    "paginas del capitulo",
+  );
+}
+
+type SearchCandidate = {
+  id: string | number;
+  titulo: string;
+  portadaUrl: string | null;
+  descripcion: string | null;
+  generos?: string | null;
+};
+
+export async function fetchBackendSearchCandidates(
+  query: string,
+  includeAdult: string,
+  showSinPortada: string,
+  take: number,
+): Promise<SearchCandidate[]> {
+  if (SERVER_ENV.MANGA_BACKEND === "mangadex") {
+    const rows = await mangadexSearchCandidates(query);
+    return rows.slice(0, Math.max(0, take));
+  }
+
+  const data = await fetchJsonWithRetry<SearchCandidate[]>(
+    buildSourceUrl(
+      `/series-locales/search-candidates?q=${encodeURIComponent(query)}&includeAdult=${encodeURIComponent(includeAdult)}&showSinPortada=${encodeURIComponent(showSinPortada)}&take=${encodeURIComponent(String(Math.max(take, 1)))}`,
+    ),
+    "resultados de busqueda",
+  );
+
+  return Array.isArray(data) ? data.slice(0, Math.max(take, 0)) : [];
+}
+
+export async function fetchBackendMangaRowsByGenre(
+  genre: string,
+  page: number,
+  pageSize: number,
+): Promise<unknown[]> {
+  if (SERVER_ENV.MANGA_BACKEND === "mangadex") {
+    return mangadexMangaRowsByGenre(genre, page, pageSize);
+  }
+  const encoded = encodeURIComponent(genre);
+  return fetchJsonWithRetry<unknown[]>(
+    buildSourceUrl(`/series-locales?genero=${encoded}&page=${page}&pageSize=${pageSize}`),
+    `mangas del género ${genre}`,
+  );
 }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AppShell } from "../../src/shared/components/AppShell";
+import { LoadingSpinner } from "../../src/shared/components/LoadingSpinner";
 import { fetchFavorites } from "../../src/features/favorites/services/webFavoritesApi";
 import { fetchMangas } from "../../src/features/manga/services/webApi";
 import { Manga } from "../../src/features/manga/types";
@@ -33,7 +34,7 @@ export default function FavoritesPage() {
   return (
     <AppShell>
       <h1>Favoritos</h1>
-      {loading ? <p>Cargando favoritos...</p> : null}
+      {loading ? <LoadingSpinner block /> : null}
       {error ? <p className="error-text">Error: {error}</p> : null}
       <section className="manga-grid">
         {items.map((manga) => (

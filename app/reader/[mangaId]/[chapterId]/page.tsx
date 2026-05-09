@@ -3,6 +3,7 @@
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "../../../../src/shared/components/AppShell";
+import { LoadingSpinner } from "../../../../src/shared/components/LoadingSpinner";
 import { upsertHistory } from "../../../../src/features/history/services/webHistoryApi";
 import { fetchChapterPages, fetchMangaDetail } from "../../../../src/features/manga/services/webApi";
 import { MangaDetail } from "../../../../src/features/manga/types";
@@ -232,16 +233,20 @@ export default function ReaderPage() {
   const router = useRouter();
 
   const mangaId = params.mangaId;
-  const chapterId = Number(params.chapterId);
-  const chapterNumber = Number(searchParams.get("chapterNumber") ?? chapterId);
+  const chapterId = params.chapterId ?? "";
+  const chapterNumParam = searchParams.get("chapterNumber");
   const [detail, setDetail] = useState<MangaDetail | null>(null);
   const [pages, setPages] = useState<string[]>([]);
   const [horizontal, setHorizontal] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  /** Numero para UI e historial: prioriza query, si no existe para UUID toma el capitulo cargado por id. */
+  const chapterNumber =
+    chapterNumParam != null && chapterNumParam !== ""
+      ? Number(chapterNumParam)
+      : (detail?.chapters.find((ch) => String(ch.id) === chapterId)?.chapterNumber ?? 1);
 
   useEffect(() => {
-    if (!mangaId || !chapterId) return;
+    if (!mangaId || chapterId.length === 0) return;
     const load = async () => {
       try {
         setLoading(true);
@@ -249,29 +254,33 @@ export default function ReaderPage() {
           fetchMangaDetail(mangaId),
           fetchChapterPages(mangaId, chapterId),
         ]);
+        const qParsed =
+          chapterNumParam != null && chapterNumParam !== "" ? Number(chapterNumParam) : Number.NaN;
+        const matched = detailData.chapters.find((ch) => String(ch.id) === chapterId);
+        const resolvedChapterNumber = Number.isFinite(qParsed)
+          ? qParsed
+          : matched?.chapterNumber ?? 1;
         setDetail(detailData);
         setPages(chapterPages);
-        await upsertHistory({ mangaId, chapterId, chapterNumber });
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Error en lector");
+        await upsertHistory({ mangaId, chapterId, chapterNumber: resolvedChapterNumber });
+      } catch {
+        /* Sin mensaje de error visible en el lector */
       } finally {
         setLoading(false);
       }
     };
     void load();
-  }, [mangaId, chapterId, chapterNumber]);
+  }, [mangaId, chapterId, chapterNumParam]);
 
   const nextChapter = useMemo(() => {
     if (!detail) return null;
-    const ordered = [...detail.chapters].sort((a, b) => a.chapterNumber - b.chapterNumber);
-    return (
-      ordered.find(
-        (chapter) =>
-          chapter.chapterNumber > chapterNumber ||
-          (chapter.chapterNumber === chapterNumber && chapter.id > chapterId),
-      ) ?? null
-    );
-  }, [detail, chapterId, chapterNumber]);
+    const ordered = [...detail.chapters].sort((a, b) => {
+      if (a.chapterNumber !== b.chapterNumber) return a.chapterNumber - b.chapterNumber;
+      return String(a.id).localeCompare(String(b.id));
+    });
+    const idx = ordered.findIndex((ch) => String(ch.id) === String(chapterId));
+    return idx >= 0 && idx + 1 < ordered.length ? ordered[idx + 1]! : null;
+  }, [detail, chapterId]);
   const readerItems = useMemo(
     () => buildReaderItems(pages, chapterNumber),
     [pages, chapterNumber],
@@ -282,79 +291,80 @@ export default function ReaderPage() {
 
   return (
     <AppShell>
-      <section className="reader-topbar">
-        <h1>
-          {detail?.title ?? "Lectura"} - Capitulo {chapterNumber}
-        </h1>
-        <button className="button ghost-button" onClick={() => setHorizontal((v) => !v)}>
-          Modo: {horizontal ? "Horizontal" : "Vertical"}
-        </button>
-      </section>
+      <div className="reader-loading">
+        <section className="reader-topbar">
+          <h1>
+            {detail?.title ?? "Lectura"} - Capitulo {chapterNumber}
+          </h1>
+          <button className="button ghost-button" onClick={() => setHorizontal((v) => !v)}>
+            Modo: {horizontal ? "Horizontal" : "Vertical"}
+          </button>
+        </section>
 
-      {loading ? <p>Cargando paginas...</p> : null}
-      {error ? <p className="error-text">Error: {error}</p> : null}
+        {loading ? <LoadingSpinner block /> : null}
 
-      <section className={horizontal ? "reader-strip horizontal" : "reader-strip"}>
-        {readerItems.map((item) => {
-          if (item.type === "banner") {
-            return (
-              <article
-                key={item.id}
-                className={`reader-banner-card reader-banner-${item.slot}`}
-              >
-                <iframe
-                  title={`banner-${item.slot}`}
-                  srcDoc={item.html}
-                  loading="lazy"
-                  sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
-                  referrerPolicy="no-referrer"
-                />
-              </article>
-            );
-          }
-
-          if (item.type === "external") {
-            return (
-              <article key={item.id} className="reader-external-card">
-                <p>{item.label}</p>
-                <a href={item.url} target="_blank" rel="noreferrer noopener">
-                  Abrir enlace
-                </a>
-              </article>
-            );
-          }
-
-          return (
-            <img
-              key={item.id}
-              src={item.url}
-              alt={`Pagina ${item.pageNumber}`}
-              loading="lazy"
-            />
-          );
-        })}
-      </section>
-
-      <section className="reader-actions">
-        <button className="button ghost-button" onClick={() => router.back()}>
-          Volver
-        </button>
-        <button
-          className="button"
-          onClick={() => {
-            if (!nextChapter || !detail) return;
-            if (shouldShowInterstitial) {
-              openInterstitialSocialBar();
+        <section className={horizontal ? "reader-strip horizontal" : "reader-strip"}>
+          {readerItems.map((item) => {
+            if (item.type === "banner") {
+              return (
+                <article
+                  key={item.id}
+                  className={`reader-banner-card reader-banner-${item.slot}`}
+                >
+                  <iframe
+                    title={`banner-${item.slot}`}
+                    srcDoc={item.html}
+                    loading="lazy"
+                    sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+                    referrerPolicy="no-referrer"
+                  />
+                </article>
+              );
             }
-            router.replace(
-              `/reader/${detail.id}/${nextChapter.id}?chapterNumber=${nextChapter.chapterNumber}`,
+
+            if (item.type === "external") {
+              return (
+                <article key={item.id} className="reader-external-card">
+                  <p>{item.label}</p>
+                  <a href={item.url} target="_blank" rel="noreferrer noopener">
+                    Abrir enlace
+                  </a>
+                </article>
+              );
+            }
+
+            return (
+              <img
+                key={item.id}
+                src={item.url}
+                alt={`Pagina ${item.pageNumber}`}
+                loading="lazy"
+              />
             );
-          }}
-          disabled={!nextChapter}
-        >
-          {nextChapter ? "Seguir leyendo" : "Fin del manga"}
-        </button>
-      </section>
+          })}
+        </section>
+
+        <section className="reader-actions">
+          <button className="button ghost-button" onClick={() => router.back()}>
+            Volver
+          </button>
+          <button
+            className="button"
+            onClick={() => {
+              if (!nextChapter || !detail) return;
+              if (shouldShowInterstitial) {
+                openInterstitialSocialBar();
+              }
+              router.replace(
+                `/reader/${detail.id}/${nextChapter.id}?chapterNumber=${nextChapter.chapterNumber}`,
+              );
+            }}
+            disabled={!nextChapter}
+          >
+            {nextChapter ? "Seguir leyendo" : "Fin del manga"}
+          </button>
+        </section>
+      </div>
     </AppShell>
   );
 }

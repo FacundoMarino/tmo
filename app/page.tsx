@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AppShell } from "../src/shared/components/AppShell";
+import { LoadingSpinner } from "../src/shared/components/LoadingSpinner";
 import {
   fetchGenres,
   fetchMangas,
@@ -126,7 +127,7 @@ export default function Home() {
         </select>
       </section>
 
-      {loading ? <p>Cargando manga...</p> : null}
+      {loading ? <LoadingSpinner block /> : null}
       {error ? <p className="error-text">Error: {error}</p> : null}
 
       {selectedGenre && !query.trim() ? (

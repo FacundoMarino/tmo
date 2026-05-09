@@ -13,7 +13,7 @@ export type MangaGenre = {
 };
 
 export type MangaChapter = {
-  id: number;
+  id: string;
   chapterNumber: number;
   title: string | null;
   totalPages: number;

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "../../features/auth/hooks/useSession";
+import { LoadingSpinner } from "./LoadingSpinner";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -41,7 +42,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
         <div className="session-pill">
           {loading ? (
-            <span>Cargando sesión...</span>
+            <LoadingSpinner size="sm" />
           ) : authenticated ? (
             <>
               <span>{user?.email ?? "Usuario"}</span>

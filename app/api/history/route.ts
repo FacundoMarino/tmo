@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     const { user, accessToken } = await requireUserFromCookie();
     const body = (await request.json()) as {
       mangaId?: string;
-      chapterId?: number;
+      chapterId?: string | number;
       chapterNumber?: number;
     };
     if (!body.mangaId || !body.chapterId || !body.chapterNumber) {

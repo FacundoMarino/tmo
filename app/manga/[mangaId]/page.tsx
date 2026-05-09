@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "../../../src/shared/components/AppShell";
+import { LoadingSpinner } from "../../../src/shared/components/LoadingSpinner";
 import { addFavorite, fetchFavorites, removeFavorite } from "../../../src/features/favorites/services/webFavoritesApi";
 import { fetchMangaDetail } from "../../../src/features/manga/services/webApi";
 import { MangaDetail } from "../../../src/features/manga/types";
@@ -65,7 +66,7 @@ export default function MangaDetailPage() {
 
   return (
     <AppShell>
-      {loading ? <p>Cargando detalle...</p> : null}
+      {loading ? <LoadingSpinner block /> : null}
       {error ? <p className="error-text">Error: {error}</p> : null}
       {!detail ? null : (
         <section className="detail-layout">

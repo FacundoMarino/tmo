@@ -1,6 +1,6 @@
 export type HistoryItem = {
   manga_id: string;
-  chapter_id: number;
+  chapter_id: string | number;
   chapter_number: number;
   updated_at: string | null;
 };
@@ -28,7 +28,7 @@ export async function fetchHistory() {
 
 export async function upsertHistory(payload: {
   mangaId: string;
-  chapterId: number;
+  chapterId: string | number;
   chapterNumber: number;
 }) {
   const res = await fetch("/api/history", {

@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "download-manga-library": "node --env-file=.env scripts/download-manga-library.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.1",

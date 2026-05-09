@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "../../src/shared/components/AppShell";
+import { LoadingSpinner } from "../../src/shared/components/LoadingSpinner";
 import { fetchHistory } from "../../src/features/history/services/webHistoryApi";
 import { fetchMangas } from "../../src/features/manga/services/webApi";
 import { Manga } from "../../src/features/manga/types";
 
 type HistoryItem = {
   mangaId: string;
-  chapterId: number;
+  chapterId: string | number;
   chapterNumber: number;
   updatedAt: string | null;
 };
@@ -56,7 +57,7 @@ export default function HistoryPage() {
   return (
     <AppShell>
       <h1>Historial de lectura</h1>
-      {loading ? <p>Cargando historial...</p> : null}
+      {loading ? <LoadingSpinner block /> : null}
       {error ? <p className="error-text">Error: {error}</p> : null}
       <section className="history-list">
         {visibleHistory.map((item) => (

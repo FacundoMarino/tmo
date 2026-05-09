@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { buildSourceUrl, fetchJsonWithRetry } from "../../../../../../../src/lib/server/manga-source";
+import { fetchBackendChapterPages } from "../../../../../../../src/lib/server/manga-source";
 import { jsonError } from "../../../../../../../src/lib/server/api";
 
 export const runtime = "nodejs";
@@ -12,12 +12,7 @@ export async function GET(_request: NextRequest, context: Context) {
     return jsonError("mangaId y chapterId son requeridos.", 400);
   }
   try {
-    const data = await fetchJsonWithRetry(
-      buildSourceUrl(
-        `/series-locales/${encodeURIComponent(mangaId)}/capitulos/${encodeURIComponent(chapterId)}/paginas`,
-      ),
-      "paginas del capitulo",
-    );
+    const data = await fetchBackendChapterPages(mangaId, chapterId);
     return NextResponse.json(data);
   } catch (error) {
     return jsonError(

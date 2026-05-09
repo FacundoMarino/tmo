@@ -688,6 +688,45 @@ p {
   box-shadow: none;
 }
 
+.loading-spinner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-spinner__ring {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgb(56 189 248 / 22%);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: loading-spinner-rotate 0.65s linear infinite;
+}
+
+.loading-spinner--sm .loading-spinner__ring {
+  width: 18px;
+  height: 18px;
+  border-width: 2px;
+}
+
+.loading-spinner-block {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 28px 16px;
+  min-height: 100px;
+}
+
+.reader-loading .loading-spinner-block {
+  min-height: 45vh;
+}
+
+@keyframes loading-spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .error-text {
   color: #fca5a5;
 }

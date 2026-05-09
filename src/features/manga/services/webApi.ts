@@ -138,7 +138,7 @@ export async function fetchMangaDetail(id: string): Promise<MangaDetail> {
     estado: string | null;
     puntuacion: number | null;
     capitulos: Array<{
-      id: number;
+      id: number | string;
       numeroCapitulo: number;
       titulo: string | null;
       totalPaginas: number;
@@ -158,7 +158,7 @@ export async function fetchMangaDetail(id: string): Promise<MangaDetail> {
     score: raw.puntuacion,
     chapters: (raw.capitulos ?? [])
       .map((ch) => ({
-        id: ch.id,
+        id: String(ch.id),
         chapterNumber: ch.numeroCapitulo,
         title: ch.titulo,
         totalPages: ch.totalPaginas,
@@ -167,7 +167,7 @@ export async function fetchMangaDetail(id: string): Promise<MangaDetail> {
   };
 }
 
-export async function fetchChapterPages(mangaId: string, chapterId: number): Promise<string[]> {
+export async function fetchChapterPages(mangaId: string, chapterId: string): Promise<string[]> {
   const response = await fetch(
     `/api/manga/${encodeURIComponent(mangaId)}/chapters/${chapterId}/pages`,
     { cache: "no-store" },
