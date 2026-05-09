@@ -5,19 +5,30 @@ import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "../../../../src/shared/components/AppShell";
 import { LoadingSpinner } from "../../../../src/shared/components/LoadingSpinner";
 import { upsertHistory } from "../../../../src/features/history/services/webHistoryApi";
-import { fetchChapterPages, fetchMangaDetail } from "../../../../src/features/manga/services/webApi";
+import {
+  fetchChapterPages,
+  fetchMangaDetail,
+} from "../../../../src/features/manga/services/webApi";
 import { MangaDetail } from "../../../../src/features/manga/types";
 
 type ReaderItem =
   | { type: "image"; id: string; url: string; pageNumber: number }
-  | { type: "banner"; id: string; slot: "start" | "middle" | "end"; html: string }
+  | {
+      type: "banner";
+      id: string;
+      slot: "start" | "middle" | "end";
+      html: string;
+    }
   | { type: "external"; id: string; url: string; label: string };
 
-const CONTINUE_SOCIAL_BAR_CHAPTER_FREQUENCY = 3;
+const READER_POPUNDER_EVERY_CHAPTERS = 3;
+const READER_POPUNDER_5_EVERY_CHAPTERS = 5;
+const READER_POPUNDER_SCRIPT_SRC =
+  "https://pl29286714.profitablecpmratenetwork.com/69/f2/e4/69f2e48de1fcff16267bfc82cbfa2a8d.js";
+const READER_POPUNDER_5_SCRIPT_SRC =
+  "https://pl29392424.profitablecpmratenetwork.com/0e/d0/14/0ed014ee7933e9c32cfc2d419234ffbd.js";
 const AD_FREQUENCY = 4;
 const WEBVIEW_FREQUENCY = 5;
-const INTERSTITIAL_SOCIAL_BAR_SCRIPT_URL =
-  "https://pl29286717.profitablecpmratenetwork.com/74/ff/62/74ff622fb43376b7c05ee086692ba03b.js";
 const AD_LINKS = [
   "https://omg10.com/4/10937833",
   "https://omg10.com/4/10937831",
@@ -128,10 +139,16 @@ function getChapterBannerHtml(
 `;
 }
 
-function buildReaderItems(pages: string[], chapterNumber: number): ReaderItem[] {
+function buildReaderItems(
+  pages: string[],
+  chapterNumber: number,
+): ReaderItem[] {
   const items: ReaderItem[] = [];
   const bannerLink = pickRotatingLink(AD_LINKS, chapterNumber - 1);
-  const interstitialLink = pickRotatingLink(INTERSTITIAL_LINKS, chapterNumber - 1);
+  const interstitialLink = pickRotatingLink(
+    INTERSTITIAL_LINKS,
+    chapterNumber - 1,
+  );
 
   if (pages.length > 0) {
     items.push({
@@ -194,37 +211,15 @@ function buildReaderItems(pages: string[], chapterNumber: number): ReaderItem[] 
   return items;
 }
 
-function openInterstitialSocialBar(): void {
-  const popup = window.open("about:blank", "_blank");
-  if (!popup) {
-    return;
-  }
-
-  // Prevent reverse-tabnabbing while keeping access to document.write.
-  popup.opener = null;
-  popup.document.write(`<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Contenido patrocinado</title>
-    <style>
-      body {
-        margin: 0;
-        min-height: 100vh;
-        display: grid;
-        place-items: center;
-        background: #020617;
-        color: #e2e8f0;
-        font-family: Arial, Helvetica, sans-serif;
-      }
-    </style>
-  </head>
-  <body>
-    <script async src="${INTERSTITIAL_SOCIAL_BAR_SCRIPT_URL}"></script>
-  </body>
-</html>`);
-  popup.document.close();
+function injectReaderScriptIntoHead(elementId: string, src: string): void {
+  if (typeof document === "undefined") return;
+  const id = `reader-ad-${elementId}`;
+  if (document.getElementById(id)) return;
+  const s = document.createElement("script");
+  s.id = id;
+  s.src = src;
+  s.async = true;
+  document.head.appendChild(s);
 }
 
 export default function ReaderPage() {
@@ -243,7 +238,8 @@ export default function ReaderPage() {
   const chapterNumber =
     chapterNumParam != null && chapterNumParam !== ""
       ? Number(chapterNumParam)
-      : (detail?.chapters.find((ch) => String(ch.id) === chapterId)?.chapterNumber ?? 1);
+      : (detail?.chapters.find((ch) => String(ch.id) === chapterId)
+          ?.chapterNumber ?? 1);
 
   useEffect(() => {
     if (!mangaId || chapterId.length === 0) return;
@@ -255,14 +251,22 @@ export default function ReaderPage() {
           fetchChapterPages(mangaId, chapterId),
         ]);
         const qParsed =
-          chapterNumParam != null && chapterNumParam !== "" ? Number(chapterNumParam) : Number.NaN;
-        const matched = detailData.chapters.find((ch) => String(ch.id) === chapterId);
+          chapterNumParam != null && chapterNumParam !== ""
+            ? Number(chapterNumParam)
+            : Number.NaN;
+        const matched = detailData.chapters.find(
+          (ch) => String(ch.id) === chapterId,
+        );
         const resolvedChapterNumber = Number.isFinite(qParsed)
           ? qParsed
-          : matched?.chapterNumber ?? 1;
+          : (matched?.chapterNumber ?? 1);
         setDetail(detailData);
         setPages(chapterPages);
-        await upsertHistory({ mangaId, chapterId, chapterNumber: resolvedChapterNumber });
+        await upsertHistory({
+          mangaId,
+          chapterId,
+          chapterNumber: resolvedChapterNumber,
+        });
       } catch {
         /* Sin mensaje de error visible en el lector */
       } finally {
@@ -275,7 +279,8 @@ export default function ReaderPage() {
   const nextChapter = useMemo(() => {
     if (!detail) return null;
     const ordered = [...detail.chapters].sort((a, b) => {
-      if (a.chapterNumber !== b.chapterNumber) return a.chapterNumber - b.chapterNumber;
+      if (a.chapterNumber !== b.chapterNumber)
+        return a.chapterNumber - b.chapterNumber;
       return String(a.id).localeCompare(String(b.id));
     });
     const idx = ordered.findIndex((ch) => String(ch.id) === String(chapterId));
@@ -285,8 +290,12 @@ export default function ReaderPage() {
     () => buildReaderItems(pages, chapterNumber),
     [pages, chapterNumber],
   );
-  const shouldShowInterstitial = useMemo(() => {
-    return chapterNumber % CONTINUE_SOCIAL_BAR_CHAPTER_FREQUENCY === 0;
+  const adInjectKey = `${detail?.id ?? "m"}-${chapterId}-${chapterNumber}`;
+  const shouldInjectPopunder3 = useMemo(() => {
+    return chapterNumber % READER_POPUNDER_EVERY_CHAPTERS === 0;
+  }, [chapterNumber]);
+  const shouldInjectPopunder5 = useMemo(() => {
+    return chapterNumber % READER_POPUNDER_5_EVERY_CHAPTERS === 0;
   }, [chapterNumber]);
 
   return (
@@ -296,14 +305,19 @@ export default function ReaderPage() {
           <h1>
             {detail?.title ?? "Lectura"} - Capitulo {chapterNumber}
           </h1>
-          <button className="button ghost-button" onClick={() => setHorizontal((v) => !v)}>
+          <button
+            className="button ghost-button"
+            onClick={() => setHorizontal((v) => !v)}
+          >
             Modo: {horizontal ? "Horizontal" : "Vertical"}
           </button>
         </section>
 
         {loading ? <LoadingSpinner block /> : null}
 
-        <section className={horizontal ? "reader-strip horizontal" : "reader-strip"}>
+        <section
+          className={horizontal ? "reader-strip horizontal" : "reader-strip"}
+        >
           {readerItems.map((item) => {
             if (item.type === "banner") {
               return (
@@ -352,8 +366,17 @@ export default function ReaderPage() {
             className="button"
             onClick={() => {
               if (!nextChapter || !detail) return;
-              if (shouldShowInterstitial) {
-                openInterstitialSocialBar();
+              if (shouldInjectPopunder3) {
+                injectReaderScriptIntoHead(
+                  `p3-${adInjectKey}`,
+                  READER_POPUNDER_SCRIPT_SRC,
+                );
+              }
+              if (shouldInjectPopunder5) {
+                injectReaderScriptIntoHead(
+                  `p5-${adInjectKey}`,
+                  READER_POPUNDER_5_SCRIPT_SRC,
+                );
               }
               router.replace(
                 `/reader/${detail.id}/${nextChapter.id}?chapterNumber=${nextChapter.chapterNumber}`,
