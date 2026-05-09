@@ -1,6 +1,7 @@
 import { SERVER_ENV } from "../config";
 
 import type { HomeMangaListasPayload, HomeMangaListaItem, MangaGenreApiRow } from "./manga-contracts";
+import { wrapMangadexImageUrlForClient } from "./mangadex-image-proxy";
 
 const MD_API = "https://api.mangadex.org";
 const RETRYABLE = new Set([429, 500, 502, 503, 504]);
@@ -140,10 +141,8 @@ function buildMangadexCoverCdnUrl(mangaId: string, fileName: string): string {
   const safeManga = encodeURIComponent(mangaId);
   const safeFile = encodeURIComponent(fileName);
   const base = `https://uploads.mangadex.org/covers/${safeManga}/${safeFile}`;
-  if (thumb === "256" || thumb === "512") {
-    return `${base}.${thumb}.jpg`;
-  }
-  return base;
+  const out = thumb === "256" || thumb === "512" ? `${base}.${thumb}.jpg` : base;
+  return wrapMangadexImageUrlForClient(out);
 }
 
 /** `fileName` en `relationships[].attributes` y/o objeto `included` para el mismo id. */
@@ -688,5 +687,7 @@ export async function mangadexChapterPages(chapterId: string): Promise<string[]>
   const fileList = dataSaverEnv && saver.length > 0 ? saver : pages;
   const pathSeg = dataSaverEnv && saver.length > 0 ? "data-saver" : "data";
 
-  return fileList.map((name) => `${base}/${pathSeg}/${hash}/${encodeURIComponent(name)}`);
+  return fileList.map((name) =>
+    wrapMangadexImageUrlForClient(`${base}/${pathSeg}/${hash}/${encodeURIComponent(name)}`),
+  );
 }
