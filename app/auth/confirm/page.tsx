@@ -27,7 +27,6 @@ export default function ConfirmRedirectPage() {
         background:
           "radial-gradient(circle at top, #172554 0%, #0f172a 40%, #020617 100%)",
         color: "#f8fafc",
-        fontFamily: "Inter, Segoe UI, Roboto, sans-serif",
       }}
     >
       <section

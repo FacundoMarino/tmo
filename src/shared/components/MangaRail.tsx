@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useRef } from "react";
+import { forwardRef, type ReactNode, useRef } from "react";
 
 const MOVE_THRESHOLD_PX = 10;
 
@@ -14,8 +14,17 @@ type MangaRailProps = {
   labelledBy?: string;
 };
 
-export function MangaRail({ children, labelledBy }: MangaRailProps) {
-  const ref = useRef<HTMLDivElement>(null);
+export const MangaRail = forwardRef<HTMLDivElement, MangaRailProps>(
+  function MangaRail({ children, labelledBy }, forwardedRef) {
+  const innerRef = useRef<HTMLDivElement>(null);
+  const setRef = (el: HTMLDivElement | null) => {
+    innerRef.current = el;
+    if (typeof forwardedRef === "function") {
+      forwardedRef(el);
+    } else if (forwardedRef) {
+      forwardedRef.current = el;
+    }
+  };
   const draggingRef = useRef(false);
   const startXRef = useRef(0);
   const startScrollLeftRef = useRef(0);
@@ -23,7 +32,7 @@ export function MangaRail({ children, labelledBy }: MangaRailProps) {
 
   const handlePointerDown = (e: React.PointerEvent) => {
     if (!isMouseLikePointer(e) || e.button !== 0) return;
-    const el = ref.current;
+    const el = innerRef.current;
     if (!el) return;
 
     draggingRef.current = true;
@@ -32,12 +41,12 @@ export function MangaRail({ children, labelledBy }: MangaRailProps) {
     startScrollLeftRef.current = el.scrollLeft;
 
     const onMove = (ev: PointerEvent) => {
-      if (!draggingRef.current || !ref.current) return;
+      if (!draggingRef.current || !innerRef.current) return;
       const dx = ev.clientX - startXRef.current;
       if (Math.abs(dx) > MOVE_THRESHOLD_PX) {
         draggedRef.current = true;
       }
-      ref.current.scrollLeft = startScrollLeftRef.current - dx;
+      innerRef.current.scrollLeft = startScrollLeftRef.current - dx;
     };
 
     const onEnd = () => {
@@ -62,7 +71,7 @@ export function MangaRail({ children, labelledBy }: MangaRailProps) {
   return (
     <div className="manga-rail-outer">
       <div
-        ref={ref}
+        ref={setRef}
         className="manga-rail"
         role="region"
         aria-labelledby={labelledBy}
@@ -71,7 +80,7 @@ export function MangaRail({ children, labelledBy }: MangaRailProps) {
         onClickCapture={handleClickCapture}
         onDragStart={(ev) => ev.preventDefault()}
         onKeyDown={(event) => {
-          const el = ref.current;
+          const el = innerRef.current;
           if (!el) return;
           const step = Math.round(el.clientWidth * 0.6);
           if (event.key === "ArrowRight") {
@@ -87,4 +96,5 @@ export function MangaRail({ children, labelledBy }: MangaRailProps) {
       </div>
     </div>
   );
-}
+},
+);

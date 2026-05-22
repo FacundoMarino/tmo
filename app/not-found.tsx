@@ -7,7 +7,6 @@ export default function NotFound() {
         placeItems: "center",
         background: "#0f172a",
         color: "#f8fafc",
-        fontFamily: "Inter, Segoe UI, Roboto, sans-serif",
       }}
     >
       <div style={{ textAlign: "center", padding: 24 }}>
